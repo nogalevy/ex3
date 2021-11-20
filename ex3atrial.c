@@ -15,19 +15,18 @@ const int NUM_OF_LOOPS = 50;
 
 // -------prototype section-----------------------
 
-FILE* open_file(char* argv,  char *mode);
-void close_file(FILE **fp);
 void check_argv(int argc );
-void calc_sort_times(char *filename);
+void calc_sort_times();
 void bubble_sort(int arr[]);
 void quick_sort(int arr[], int first_i, int last_i);
-void parent_calc(int pipe_fd_qs[], int pipe_fd_bs[]);
+void parent_calc(int bubble_data[], int quick_data[]);
 void randomize_array(int arr[]);
 void handle_child(int child_num, int arr[], int pipe_fd[]);
 void handle_bubble_sort(int arr[], int pipe_fd[]);
 void handle_quick_sort(int arr[], int pipe_fd[]);
 int partition (int arr[], int low, int high);
 void swap(int* a, int* b);
+void handle_father(int pipefd[], int bubble_data[], int quick_data[], int index);
 
 //---------main section---------------------------
 
@@ -56,7 +55,7 @@ void calc_sort_times()
 {
 	int i, j;
 	pid_t pid;
-	int arr[SIZE];
+	int arr[SIZE], bubble_data[NUM_OF_LOOPS], quick_data[NUM_OF_LOOPS];
   int pipe_fd[2];
 
   if (pipe(pipe_fd) == -1)
@@ -68,11 +67,6 @@ void calc_sort_times()
 	for(i = 0; i < NUM_OF_LOOPS; i++)
 	{
 		randomize_array(arr); //putting random numbers in array
-
-		//i think the following has to be under father if (and switch commands for children?)
-    close(pipe_fd[0]); //close input
-    close(STDOUT_FILENO); //close standart output
-    dup(pipe_fd[1]); //move standart output pointer to the output
 
 		//create two child proccess
 		for(j = 0; j < 2; j++)
@@ -87,13 +81,38 @@ void calc_sort_times()
 			if(pid == 0) //if child
 				handle_child(j, arr, pipe_fd);
 		}
-    close(pipe_fd[1]);
+		
 		//parent wait for both children
 		for(j = 0; j < 2; j++)
 			wait(NULL);
+		handle_father(pipe_fd, bubble_data, quick_data, i);
 	}
+	close(pipe_fd[0]);
+	close(pipe_fd[1]);
+	parent_calc(bubble_data, quick_data);
+}
 
-	parent_calc(pipe_fd); //parent prints data from file
+//------------------------------------------------
+
+void handle_father(int pipefd[], int bubble_data[], int quick_data[], int index)
+{
+		char type1, type2;
+		double time1, time2;
+    close(STDIN_FILENO);
+    dup(pipe_fd[0]);
+
+		scanf("%s %lf %s %lf", type1, time1, type2, time2);
+		if(type1 == 'b')
+		{
+			bubble_data[index] = time1;
+			quick_data[index] = time2;
+		}
+		else
+		{
+			bubble_data[index] = time2;
+			quick_data[index] = time1;
+
+		}
 }
 
 //------------------------------------------------
@@ -102,11 +121,16 @@ void calc_sort_times()
 //appropriate child sorts accordingly
 void handle_child(int child_num, int arr[], int pipe_fd[])
 {
+	close(pipe_fd[0]);
+	close(STDOUT_FILENO);
+	dup(pipe_fd[1])
+
 	if(child_num == 0)
 		handle_bubble_sort(arr, pipe_fd);
 	else
 		handle_quick_sort(arr, pipe_fd);
 
+	close(pipe_fd[1]);
 	exit(EXIT_SUCCESS); //child ends process
 }
 
@@ -133,12 +157,6 @@ void handle_bubble_sort(int arr[], int pipe_fd[])
 	bubble_sort(arr);
 	gettimeofday(&t1, NULL);
 
-  //print to pipe
-  // close(pipe_fd[0]); //close input
-  // close(STDOUT_FILENO); //close standart output
-  // dup(pipe_fd[1]); //move standart output pointer to the output
-
-
 	printf("%s %f\n", "b", (double)(t1.tv_usec - t0.tv_usec)/1000000 +
  								(double)(t1.tv_sec - t0.tv_sec));
 }
@@ -155,11 +173,6 @@ void handle_quick_sort(int arr[], int pipe_fd[])
 	gettimeofday(&t0, NULL);
 	quick_sort(arr, first, last);
 	gettimeofday(&t1, NULL);
-
-  //print to pipe
-  // close(pipe_fd[0]); //close input
-  // close(STDOUT_FILENO); //close standart output
-  // dup(pipe_fd[1]); //move standart output pointer to the output
 
   printf("%s %f\n", "q", (double)(t1.tv_usec - t0.tv_usec)/1000000 +
 	 								(double)(t1.tv_sec - t0.tv_sec));
@@ -225,75 +238,37 @@ int partition (int arr[], int low, int high)
 
 //------------------------------------------------
 
-//function receives file filled with run time data and prints
-//out average, min and max of all run time data
-void parent_calc(int pipe_fd[])
+
+void parent_calc(int bubble_data[], int quick_data[])
 {
 	double sum_bsort, sum_qsort, min_bsort, min_qsort,
-				max_bsort, max_qsort, curr, avg_bs, avg_qs;
-	char type;
-  int time_of_bs[NUM_OF_LOOPS] = {0},
-      time_of_qs[NUM_OF_LOOPS] = {0};
-  int bs_i  = 0, qs_i = 0; //loop on arr
-	//setting initial values
+				max_bsort, max_qsort, curr_b, curr_q, avg_bs, avg_qs;
+
+	int index;
 	sum_bsort = sum_qsort = max_bsort = max_qsort = 0;
-	min_qsort = min_bsort = 100;
+	min_bsort = bubble_data[0];
+	min_qsort = quick_data[0];
 
-  //get from pipe qs data
-  //close(pipe_fd_bs[1]);
-  close(STDIN_FILENO);
-  dup(pipe_fd[1]);
-
-  // get data from pipe
-  // close(pipe_fd_bs[1]);
-  // close(STDIN_FILENO);
-  // dup(pipe_fd_bs[1]);
-
-  scanf("%c", &type);
-
-// (feof(stdin))?
-// (ioctl(0, I_NREAD, &n) == 0 && n > 0) ?
-	while(type != eof()) /*??????????*/
+	for(index = 0; index < NUM_OF_LOOPS; index++)
 	{
-		scanf("%lf", &curr); //read data about specific sorting algorithm
+		curr_b = bubble_data[index];
+		curr_q = quick_data[index];
 
-		if(type == 'b') //if bubble sort
-    {
-      time_of_bs[bs_i] = curr; //insert to array of bubble sort
-      bs_i++;
-    }
-		else	//if quick sort
-    {
-      time_of_qs[qs_i] = curr; //insert to array of quick sort
-      qs_i++;
-    }
-		scanf("%c", &type); 	//read next sort type
+		if (curr_b < min_bsort)
+			min_bsort = curr;
+		if(curr_b > max_bsort)
+			max_bsort = curr;
+		if(curr_q < min_qsort)
+			min_qsort = curr_q;
+		if(curr_q > max_bsort);
+			max_qsort = curr_q;
+
+		sum_bsort += curr_b;
+		sum_qsort += curr_q;
 	}
-
-  wait(NULL);// wait for childs before calc
-
-  // calc arr
-  for (i = 0; i < NUM_OF_LOOPS; i++)
-  {
-    sum_bsort += time_of_bs[i];
-    sum_qsort += time_of_qs[i];
-
-    if(max_bsort < time_of_bs[i])
-      max_bsort = time_of_bs[i];
-    if(max_qsort < time_of_qs[i])
-      max_qsort = time_of_qs[i];
-    if(min_bsort > time_of_bs[i])
-      min_bsort = time_of_bs[i];
-    if(min_qsort > time_of_qs[i])
-      min_qsort = time_of_qs[i];
-  }
-
-	//dividing sums to get average
 	avg_bs = sum_bsort / NUM_OF_LOOPS;
 	avg_qs = sum_qsort / NUM_OF_LOOPS;
 
-	//prints onto screen values calculated
-  //TODO: add time of parent
 	printf("%lf %lf %lf %lf %lf %lf\n", avg_bs, avg_qs, min_bsort,
 													min_qsort, max_bsort, max_qsort);
 }
