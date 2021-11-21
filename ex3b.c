@@ -22,6 +22,7 @@ struct Data {
 	int _prime; //
 };
 
+int counter = 0;
 // -------prototype section-----------------------
 
 void create_children();
@@ -36,6 +37,7 @@ void reset_arr(int arr[], int size_arr);
 
 int main(int argc, char *argv[])
 {
+	srand(SEED); //turn 17 into const global seed
 	create_children();
 
 	return EXIT_SUCCESS;
@@ -45,7 +47,7 @@ int main(int argc, char *argv[])
 
 void create_children()
 {
-	pid_t pid[NUM_OF_CHILDREN]; //create array of processes
+	pid_t ch_pid[NUM_OF_CHILDREN]; //create array of processes
 	int i;
 	int pipe_fd1[2], //pipe for all children to write to parent
 	 		pipe_fd2[2], //pipe for parent to write child1
@@ -63,15 +65,15 @@ void create_children()
 	// create 3 children
 	for(i = 0; i < NUM_OF_CHILDREN; i++)
 	{
-		pid[i] = fork(); //create child process
+		ch_pid[i] = fork(); //create child process
 
-		if(pid[i] < 0) // handle error in fork()
+		if(ch_pid[i] < 0) // handle error in fork()
 		{
 			perror("Cannot fork()");
 			exit (EXIT_FAILURE);
 		}
 
-		if(pid[i] == 0) //if child
+		if(ch_pid[i] == 0) //if child
 		{
 			//each child gets different pipe to read from parent
 			if(i == CHILD1)
@@ -84,7 +86,7 @@ void create_children()
 				handle_child(pipe_fd1, pipe_fd4);
 		}
 	}
-	handle_father(pipe_fd1, pipe_fd2, pipe_fd3, pipe_fd4, pid);
+	handle_father(pipe_fd1, pipe_fd2, pipe_fd3, pipe_fd4, ch_pid);
 }
 
 //-------------------------------------------------
@@ -96,27 +98,28 @@ void create_children()
 void handle_child(int pipe_fd1[], int pipe_r[])
 {
 	signal(SIGTERM, catch_sigterm);
-	struct Data *data = (struct Data*)malloc(sizeof(struct Data)); //alocate data
-	data->_cpid = getpid();
-	int num, counter = 0;
+	struct Data data;
+	data._cpid = getpid();
+	int num;
 
 	close(pipe_fd1[0]); //close pipe for reading
 	close(pipe_r[1]); //close pipe for writing
 
-	srand(SEED); //turn 17 into const global seed
 
 	while(true)
 	{
 		num = rand()%999 + 2; //randomize num between 2 to 1000
+
 		if(prime(num))
 		{
+			printf("prime %d \n", num);
 			//send to father num + getpid() using pipe_fd1
-			data->_prime = num; // save prime num in struct
+			data._prime = num; // save prime num in struct
 			// write to pipe the data (pid and prime num)
-			write(pipe_fd1[1], data, sizeof(struct Data)); //Q : send pointer to data or the data data?
+			write(pipe_fd1[1], &data, sizeof(struct Data)); //Q : send pointer to data or the data data?
+			read(pipe_r[0], &num, sizeof(int)); //how does it know when to stop reading??
+			puts("TRYYY\n");
 		}
-
-		read(pipe_r[0], &num, sizeof(int)); //how does it know when to stop reading??
 		if (num == NEW_PRIME)
 			counter++;
 
@@ -128,8 +131,6 @@ void handle_child(int pipe_fd1[], int pipe_r[])
 	//close all
 	close(pipe_fd1[1]);
 	close(pipe_r[0]);
-	printf("Child process %d sent %d new primes", getpid(), counter);
-	exit(EXIT_SUCCESS);
 }
 
 //-------------------------------------------------
@@ -150,6 +151,9 @@ bool prime(int num)
 void catch_sigterm(int signum)
 {
 	signal(SIGTERM, catch_sigterm);
+
+	printf("Child process %d sent %d new primes\n", getpid(), counter);
+	exit(EXIT_SUCCESS);
 }
 
 //-------------------------------------------------
@@ -158,7 +162,7 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 {
 	int primes_count[ARR_SIZE]; //count in each index the number of times father receive this number
 	int filled = 0, index;
-	struct Data *data = (struct Data*)malloc(sizeof(struct Data));
+	struct Data data;
 
 	reset_arr(primes_count, ARR_SIZE);
 
@@ -176,22 +180,24 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 		//increases filled counter
 
 		// read from children pipe to get the data (prime number and child pid)
-		read(pipe_fd1[0], data, sizeof(struct Data));
+		//read(pipe_fd1[0], data, sizeof(struct Data));
 
+		read(pipe_fd1[0], &data, sizeof(struct Data));
+
+		puts("AHHH2\n");
 		//check which child sent the number depend on the pid
 		//send the counter of the prime num
+		if (data._cpid == child[0])
+			write(pipe_fd2[1], &primes_count[data._prime], sizeof(int));
+			//break;
+		else if (data._cpid == child[1])
+			write(pipe_fd3[1], &primes_count[data._prime], sizeof(int));
+			//break;
+		else if (data._cpid == child[2])
+			write(pipe_fd4[1], &primes_count[data._prime], sizeof(int));
+			//break;
 
-			if (data->_cpid == child[0])
-				write(pipe_fd2[1], &primes_count[data->_prime], sizeof(int));
-				//break;
-			if (data->_cpid == child[1])
-				write(pipe_fd3[1], &primes_count[data->_prime], sizeof(int));
-				//break;
-			if (data->_cpid == child[2])
-				write(pipe_fd4[1], &primes_count[data->_prime], sizeof(int));
-				//break;
-
-		primes_count[data->_prime]++;	//adds to counter
+		primes_count[data._prime]++;	//adds to counter
 		filled++;					//increases fill number
 	}
 	//kills children
@@ -200,13 +206,14 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 	for(index = 0; index < NUM_OF_CHILDREN; index++)
 		kill(child[index], SIGTERM);
 
+
 	//close all
 	close(pipe_fd1[0]);
 	close(pipe_fd2[1]);
 	close(pipe_fd3[1]);
 	close(pipe_fd3[1]);
 
-	printf("The number of different integers received is: %d", count_primes(primes_count));
+	printf("The number of different integers received is: %d\n", count_primes(primes_count));
 }
 
 //-------------------------------------------------
