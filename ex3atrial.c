@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 
 	gettimeofday(&t1, NULL); //calculating end time
 	//printing time parent took to run
-	printf("%f\n",(double)(t1.tv_usec - t0.tv_usec)/1000000 +
+	printf("%f\n",(double)(t1.tv_usec - t0.tv_usec)/CLOCKS_PER_SEC +
 									(double)(t1.tv_sec - t0.tv_sec));
 
 	return EXIT_SUCCESS;
@@ -81,7 +81,7 @@ void calc_sort_times()
 			if(pid == 0) //if child
 				handle_child(j, arr, pipe_fd);
 		}
-		
+
 		//parent wait for both children
 		for(j = 0; j < 2; j++)
 			wait(NULL);
@@ -157,7 +157,7 @@ void handle_bubble_sort(int arr[], int pipe_fd[])
 	bubble_sort(arr);
 	gettimeofday(&t1, NULL);
 
-	printf("%s %f\n", "b", (double)(t1.tv_usec - t0.tv_usec)/1000000 +
+	printf("%s %f\n", "b", (double)(t1.tv_usec - t0.tv_usec)/CLOCKS_PER_SEC +
  								(double)(t1.tv_sec - t0.tv_sec));
 }
 
@@ -174,7 +174,7 @@ void handle_quick_sort(int arr[], int pipe_fd[])
 	quick_sort(arr, first, last);
 	gettimeofday(&t1, NULL);
 
-  printf("%s %f\n", "q", (double)(t1.tv_usec - t0.tv_usec)/1000000 +
+  printf("%s %f\n", "q", (double)(t1.tv_usec - t0.tv_usec)/CLOCKS_PER_SEC +
 	 								(double)(t1.tv_sec - t0.tv_sec));
 }
 //------------------------------------------------

@@ -11,10 +11,14 @@
 
 const int ARR_SIZE = 1000;
 const int NUM_OF_CHILDREN = 3;
+const int SEED = 17;
+const int NEW_PRIME = 0;
+
+enum CHILDREN { CHILD1, CHILD2, CHILD3}
 
 struct Data{
-	pid_t _cpid;
-	int _prime;
+	pid_t _cpid; //child pid
+	int _prime; //
 };
 
 // -------prototype section-----------------------
@@ -38,68 +42,79 @@ int main(int argc, char *argv[])
 
 void create_children()
 {
-	pid_t pid[NUM_OF_CHILDREN];
+	pid_t pid[NUM_OF_CHILDREN]; //create array of processes
 	int i, j;
-	int pipe_fd1[2], pipe_fd2[2],pipe_fd3[2],pipe_fd4[2];
-	
-	//1 pipe for all children to write to parent
-	//3 pipes for parent to write to children seperately
-  	if (pipe(pipe_fd1) == -1 || pipe(pipe_fd2) == -1 || 
-  		pipe(pipe_fd3) == -1 || pipe(pipe_fd4) == -1)
-  	{
-   	 	perror("cannot open pipe");
-    	exit(EXIT_FAILURE) ;
-  	}
+	int pipe_fd1[2], //pipe for all children to write to parent
+	 		pipe_fd2[2], //pipe for parent to write child1
+			pipe_fd3[2], //pipe for parent to write child2
+			pipe_fd4[2]; //pipe for parent to write child3
 
+	//create pipes and handle eroor
+	if (pipe(pipe_fd1) == -1 || pipe(pipe_fd2) == -1 ||
+		pipe(pipe_fd3) == -1 || pipe(pipe_fd4) == -1)
+	{
+ 	 	perror("cannot open pipe");
+  	exit(EXIT_FAILURE) ;
+	}
+
+	// create 3 children
 	for(i = 0; i < NUM_OF_CHILDREN; i++)
 	{
-		pid[i] = fork();
+		pid[i] = fork(); //create child process
 
 		if(pid[i] < 0) // handle error in fork()
 		{
 			perror("Cannot fork()");
 			exit (EXIT_FAILURE);
 		}
+
 		if(pid[i] == 0) //if child
 		{
 			//each child gets different pipe to read from parent
-			if(i = 0)
+			if(i = CHILD1)
 				handle_child(pipe_fd1, pipe_fd2);
 
-			if(i = 1)
+			else if(i = CHILD2)
 				handle_child(pipe_fd1, pipe_fd3);
+
 			else
 				handle_child(pipe_fd1, pipe_fd4);
 		}
 	}
-	handle_father(pipe_fd1, pipe_fd2, pipe_fd3, pipe_fd4, pid);	
+	handle_father(pipe_fd1, pipe_fd2, pipe_fd3, pipe_fd4, pid);
 }
 
 //-------------------------------------------------
 
 //all children write through the same pipe
 //children read through 3 seperate pipes?
-
+//gets pipe_fd1[] = pipe to write parent
+//gets pipe_r[] = pipe to read from parent
 void handle_child(int pipe_fd1[], int pipe_r[])
 {
 	signal(SIGTERM, catch_sigterm);
-	Data *data = (struct Data*)malloc(sizeof(struct Data));
+	Data *data = (struct Data*)malloc(sizeof(struct Data)); //alocate data
 	data->_cpid = getpid();
-	int num, counter;
+	int num, counter = 0;
 
-	close(pipe_fd1[0]);
-	close(pipe_r[1]);
+	close(pipe_fd1[0]); //close pipe for reading
+	close(pipe_r[1]); //close pipe for writing
 
+<<<<<<< HEAD
 	srand(17); //turn 17 into const global seed
+=======
+	srand(SEED) //turn 17 into const global seed
+>>>>>>> 6534fef6fd5deda35749a33a1dd66d0c404ac403
 
 	while(true)
 	{
-		num = rand()%999 + 2;
+		num = rand()%999 + 2; //randomize num between 2 to 1000
 		if(prime(num))
 		{
 			//send to father num + getpid() using pipe_fd1
-			data->_prime = num;
-			write(pipe_fd1[1], data, sizeof(struct Data));
+			data->_prime = num; // save prime num in struct
+			// write to pipe the data (pid and prime num)
+			write(pipe_fd1[1], data, sizeof(struct Data)); //Q : send pointer to data or the data data?
 		}
 	}
 	//when kill signal received, SHOULD get out of loop
@@ -107,19 +122,19 @@ void handle_child(int pipe_fd1[], int pipe_r[])
 	read(pipe_r[0], num, sizeof(int)); //how does it know when to stop reading??
 	while(num != eof)
 	{
-		if (num == 0)
+		if (num == NEW_PRIME)
 			counter++;
 		read(pipe_r[0], num, sizeof(int));
 	}
+	//close all
 	close(pipe_fd1[1]);
 	close(pipe_r[0]);
 	printf("Child process %d sent %d new primes", getpid(), counter);
 	exit(EXIT_SUCCESS);
-	
 }
 
 //-------------------------------------------------
-
+//gets intiger and check if is prime
 bool prime(int num)
 {
 	int i;
@@ -132,25 +147,25 @@ bool prime(int num)
 }
 
 //-------------------------------------------------
-
+//catch signal of SIGTERM
 void catch_sigterm(int signum)
 {
-	signal(SIGTERM, catch_sigterm);	
+	signal(SIGTERM, catch_sigterm);
 }
 
 //-------------------------------------------------
-
+// gets pipe of all children and the pid array
 void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[], pid_t child[])
 {
-	int primes[ARR_SIZE],
-		primes_count[ARR_SIZE] = {0};
+	int primes[ARR_SIZE], //filled with primes that father gets from children
+			primes_count[ARR_SIZE] = {0}; //count in each index the number of times father receive this number
 	int filled = 0, index;
 	struct Data *data = (struct Data*)malloc(sizeof(struct Data));
 
-	close(pipe_fd1[1]);
-	close(pipe_fd2[0]);
-	close(pipe_fd3[0]);
-	close(pipe_fd3[0]);
+	close(pipe_fd1[1]); //close for reading
+	close(pipe_fd2[0]); //close for writing
+	close(pipe_fd3[0]); //close for writing
+	close(pipe_fd3[0]); //close for writing
 
 	while(filled < ARR_SIZE)
 	{
@@ -160,8 +175,11 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 		//increases prime count
 		//increases filled counter
 
+		// read from children pipe to get the data (prime number and child pid)
 		read(pipe_fd1[0], data, sizeof(struct Data));
 
+		//check which child sent the number depend on the pid
+		//send the counter of the prime num
 		switch(data->_cpid)
 		{
 			case child[0]:
@@ -186,6 +204,7 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 	for(index = 0; index < NUM_OF_CHILDREN; index++)
 		kill(child[index], SIGTERM);
 
+	//close all
 	close(pipe_fd1[0]);
 	close(pipe_fd2[1]);
 	close(pipe_fd3[1]);
@@ -195,20 +214,14 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 }
 
 //-------------------------------------------------
-
+//
 int count_primes(int arr[])
 {
 	int index, counter = 0;
-	for(index = 0; index < ARR_SIZE; index++)
+	//start on i=2 - we can be sure that 0 and 1 is empty
+	for(index = 2; index < ARR_SIZE; index++)
 		if(arr[index] != 0)
 			counter++;
 
 	return counter;
 }
-
-
-
-
-
-
-
