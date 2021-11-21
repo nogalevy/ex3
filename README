@@ -1,0 +1,65 @@
+
+File: ex3a.c
+Calculating Executable Times of Bubble and Quick Sort - Pipes
+=====================================================================
+Written by: Tali Kalev, ID:208629691, Login: talikal
+		        and	Noga Levy, ID:315260927, Login: levyno
+
+This program receives an integer in the argument vector.
+The program creates 2 child processes - one for bubble sort
+and the other for quick sort. The program also creates a pipe in order
+to communicate with it's children.
+The parent process creates an array with 50000 cells and inserts random integers.
+The children processes then sort the arrays using either bubble or quicksort.
+Each child process sends to its father process via the pipe the amount
+of time it took them to sort the array. The father process enters the times taken
+into 2 respective arrays. The father repeats this process of randomizing an
+array and sending it to its children to sort 50 times.
+At the end of this process, the father goes over the two arrays where he collected
+the times taken and calculates the minimum, maximum and average
+times for each sorting methods.
+The parent prints in the command line these calculations and when it is
+finished it prints its own executable time.
+
+The average running time for the parent process is: ####.
+In comparison, the average running time for the parent process in program
+ex1a was: ####.
+
+Compile: gcc -Wall ex3a.c -o ex3a
+
+Run: ./ex3a <integer>
+
+Input: When running the executable file, add integer.
+	   Example: ./ex1ba1.exe 17
+
+############# update following:
+Output: Average bubble sort time, average quick sort time,
+		minimum bubble sort time, minimum quick sort time,
+		maximum bubble sort time, maximum bubble sort time,
+		Parent sort time.
+		Example: 4.505360 4.520000 4.449000 0.006000 4.598000 4.598000
+				228.755000
+
+File: ex3b.c
+Collecting Prime Numbers from Children Processes
+=====================================================================
+Written by: Tali Kalev, ID:208629691, Login: talikal
+        		and	Noga Levy, ID:315260927, Login: levyno
+
+In this program, the parent program creates 3 children processes. 
+
+
+
+
+
+
+
+Compile: gcc -Wall ex3a.c -o ex3a
+
+Run: ./ex3a <integer>
+
+Input: When running the executable file, add integer.
+      Example: ./ex1ba1.exe 17
+
+
+Output:
