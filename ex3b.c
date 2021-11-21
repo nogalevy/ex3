@@ -10,7 +10,7 @@
 
 // ----------- const section ---------------------
 
-const int ARR_SIZE = 1000;
+const int ARR_SIZE = 10;
 const int NUM_OF_CHILDREN = 3;
 const int SEED = 17;
 const int NEW_PRIME = 0;
@@ -180,7 +180,6 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 
 		//check which child sent the number depend on the pid
 		//send the counter of the prime num
-<<<<<<< HEAD
 
 			if (data->_cpid == child[0])
 				write(pipe_fd2[1], &primes_count[data->_prime], sizeof(int));
@@ -194,25 +193,6 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 
 		primes_count[data->_prime]++;	//adds to counter
 		filled++;					//increases fill number
-=======
-		switch(data->_cpid)
-		{
-			case child[0]:
-				write(pipe_fd2[1], primes_count[data->_prime], sizeof(int));
-				break;
-			case child[1]:
-				write(pipe_fd3[1], primes_count[data->_prime], sizeof(int));
-				break;
-			case child[2]:
-				write(pipe_fd3[1], primes_count[data->_prime], sizeof(int));
-				break;
-			default:
-				break;
-		}
-		primes[filled] = data->_prime; //adds prime
-		primes_count[data->_primes]++;	//adds to counter
-		filled++;						//increases fill number
->>>>>>> e4377844e1f31a4e367086ddc75f132fd01aa571
 	}
 	//kills children
 	//counts how many different prime numbers
