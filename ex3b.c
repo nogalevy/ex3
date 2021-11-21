@@ -90,7 +90,7 @@ void handle_child(int pipe_fd1[], int pipe_r[])
 	close(pipe_fd1[0]);
 	close(pipe_r[1]);
 
-	srand(17) //turn 17 into const global seed
+	srand(17); //turn 17 into const global seed
 
 	while(true)
 	{
@@ -178,7 +178,7 @@ void handle_father(int pipe_fd1[], int pipe_fd2[], int pipe_fd3[], int pipe_fd4[
 		}
 		primes[filled] = data->_prime; //adds prime
 		primes_count[data->_primes]++;	//adds to counter
-		filled++						//increases fill number
+		filled++;						//increases fill number
 	}
 	//kills children
 	//counts how many different prime numbers
